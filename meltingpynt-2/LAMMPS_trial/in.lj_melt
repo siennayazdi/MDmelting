@@ -1,0 +1,49 @@
+# LAMMPS input script using metal units
+
+units metal
+atom_style atomic
+boundary p p p
+
+# Create lattice
+lattice fcc 3.4
+region box block 0 17 0 17 0 17
+create_box 1 box
+create_atoms 1 box
+
+# Mass of argon in grams/mol
+mass 1 39.948
+
+# Lennard-Jones potential (parameters in metal units, cutoff is 3 * 3.4 Angstroms)
+pair_style lj/cut 10.2
+pair_coeff 1 1 0.01029 3.4 10.2
+
+# Timestep of 5 fs
+timestep 0.005
+
+# Loop over temperatures from 40 K to 120 K in increments of 10 K
+variable temp index 40 50 60 70 80 90 100 110 120
+label loop_temperature
+
+# Set velocities for initial temperature of ${temp} K
+velocity all create ${temp} 87287 loop geom
+
+# Apply NPT ensemble with P = 1 bar, T = ${temp} K, timestep = 0.005 ps, temperature damping = 0.5 ps (100x timestep), pressure damping = 5.0 ps (1000x timestep)
+fix 1 all npt temp ${temp} ${temp} 0.5 iso 1.0 1.0 5.0
+thermo 100
+thermo_style custom step pe ke etotal temp press vol
+
+# Output dump
+dump 1 all custom 100 dump_${temp}K.lammpstrj id type x y z vx vy vz
+
+# Run the simulation for 10000 steps
+run 10000
+
+# Unfix the previous fix to prepare for the next loop iteration
+unfix 1
+
+# Dump settings will be cleared with the unfix command, so we remove it
+undump 1
+
+# Next iteration
+next temp
+jump SELF loop_temperature

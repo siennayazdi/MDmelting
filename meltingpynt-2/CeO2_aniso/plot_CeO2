@@ -1,0 +1,43 @@
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from lammps.formats import LogFile
+
+
+def main():
+    logfile = LogFile("log.lammps")
+    # number of runs
+    nruns = len(logfile.runs)
+    print("Number of runs: {}".format(nruns))
+    T = []
+    Epot = []
+    Ekin = []
+    U = []
+    P = []
+    V = []
+    for run in logfile.runs[1:]:
+        df = pd.DataFrame(run)
+        # number of steps
+        nsteps = len(df)
+        df_eq = df.iloc[nsteps // 2:]
+        T.append(df_eq["Temp"].mean())
+        Epot.append(df_eq["PotEng"].mean())
+        Ekin.append(df_eq["KinEng"].mean())
+        U.append(df_eq["TotEng"].mean())
+        P.append(df_eq["Press"].mean())
+        V.append(df_eq["Volume"].mean())
+    plt.plot(T, Epot, "o:", label="Epot")
+    plt.xlabel("T (K)")
+    plt.ylabel("Epot (kcal/mol)")
+    plt.savefig("Epot_vs_T.png")
+    plt.close()
+    
+    plt.plot(T, Ekin, "o:", label="Ekin")
+    plt.xlabel("T (K)")
+    plt.ylabel("Ekin (kcal/mol)")
+    plt.savefig("Ekin_vs_T.png")
+    plt.close()
+
+
+if __name__ == "__main__":
+    main()

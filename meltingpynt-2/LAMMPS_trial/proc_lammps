@@ -1,0 +1,65 @@
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+def analyze_properties(Ts):
+    average_potential_energies = []
+    average_kinetic_energies = []
+    average_total_energies = []
+    average_pressures = []
+    average_volumes = []
+    standev_potential_energies = []
+    standev_kinetic_energies = []
+    standev_total_energies = []
+    standev_pressures = []
+    standev_volumes = []
+
+    with open("log.lammps", "r") as f:
+        for T in Ts:
+            for line in f:
+                if "Per MPI rank memory" in line:
+                    break
+            next(f)
+            data = []
+            for line in f:
+                if "Loop time of" in line:
+                    break
+                data.append([float(x) for x in line.split()])
+            data = np.array(data)
+            data = pd.DataFrame(data, columns='Step PotEng KinEng TotEng Temp Press Volume'.split())
+            properties = ['PotEng', 'KinEng', 'TotEng', 'Press', 'Volume']
+            average_properties = []
+            standev_properties = []
+            for prop in properties:
+                average_property = np.mean(data[prop].iloc[40:])
+                standev_property = np.std(data[prop].iloc[40:])
+                average_properties.append(average_property)
+                standev_properties.append(standev_property)
+            average_potential_energies.append(average_properties[0])
+            standev_potential_energies.append(standev_properties[0])
+            average_kinetic_energies.append(average_properties[1])
+            standev_kinetic_energies.append(standev_properties[1])
+            average_total_energies.append(average_properties[2])
+            standev_total_energies.append(standev_properties[2])
+            average_pressures.append(average_properties[3])
+            standev_pressures.append(standev_properties[3])
+            average_volumes.append(average_properties[4])
+            standev_volumes.append(standev_properties[4])
+            fig, axs = plt.subplots(len(properties), 1, figsize=(8, len(properties) * 4))
+            for i, prop in enumerate(properties):
+                axs[i].plot(data.Step, data[prop], "ko--", label=f"Temp {T}")
+                axs[i].set_xlabel('Timestep')
+                axs[i].set_ylabel(prop)
+                axs[i].set_title(f'{prop} at {T}K')
+                #axs[i].errorbar(data.Step, data[prop].iloc[25:], yerr=standev_properties[i], fmt='none', color='gray', capsize=5)
+            plt.tight_layout()
+            plt.savefig(f'equilibration_T{T}.png')  # Save the plot as a PNG file
+            plt.close()
+    return (standev_potential_energies, standev_kinetic_energies, standev_total_energies, standev_pressures, standev_volumes, average_potential_energies, average_kinetic_energies, average_total_energies, average_pressures, average_volumes)
+if __name__ == "__main__":
+    Temps = [40, 50, 60, 70, 80, 90, 100, 110, 120]
+    standev_potential_energies, standev_kinetic_energies, standev_total_energies, standev_pressures, standev_volumes, avg_potential, avg_kinetic, avg_total, avg_pressure, avg_volume = analyze_properties(Ts=Temps)
+    
+    print("temp epot ekin etot press vol")
+    for i, T in enumerate(Temps):
+        string = f"{T} {standev_potential_energies[i]} {standev_kinetic_energies[i]} {standev_total_energies[i]} {standev_pressures[i]} {standev_volumes[i]} {avg_potential[i]} {avg_kinetic[i]} {avg_total[i]} {avg_pressure[i]} {avg_volume[i]}"
+        print(string)
